@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planck's Constant from LED Threshold Voltages</title>
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#1b2430; --muted:#5b6b7c; --line:#dce2e9;
+    --brand:#2f6fb5; --brand-dk:#1f4f85; --warn:#b4531a; --warn-bg:#fdf3ec;
+    --ok:#1f7a52; --ok-bg:#eef8f3; --bad:#b3261e; --bad-bg:#fdeeed;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1000px;margin:0 auto;padding:22px 16px 70px}
+  h1{font-size:23px;margin:0 0 4px;letter-spacing:-.2px}
+  .sub{color:var(--muted);font-size:13.5px;margin-bottom:20px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+        padding:16px 16px 18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,32,52,.05)}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--brand-dk);
+     margin:0 0 12px;font-weight:700}
+  .eq{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;
+      background:#f2f5f8;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+      overflow-x:auto;white-space:nowrap;margin:9px 0}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{padding:6px 7px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{background:#f2f5f8;color:var(--muted);font-weight:600;font-size:11.5px;
+     text-transform:uppercase;letter-spacing:.04em;position:sticky;top:0}
+  th:first-child,td:first-child{text-align:center}
+  td:nth-child(2),th:nth-child(2),td:nth-child(3),th:nth-child(3){text-align:center}
+  .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:9px}
+  input[type=number]{width:88px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;
+      font:inherit;font-size:13px;text-align:right;background:#fff;color:var(--ink)}
+  input[type=number]:focus{outline:2px solid var(--brand);outline-offset:-1px;border-color:var(--brand)}
+  input[type=checkbox]{width:17px;height:17px;accent-color:var(--brand)}
+  button{font:inherit;font-size:13px;font-weight:600;padding:7px 12px;border-radius:8px;
+      border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer}
+  button:hover{background:#f2f5f8}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff}
+  button.primary:hover{background:var(--brand-dk)}
+  .row-missed td{background:var(--bad-bg)}
+  .btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}
+  .stat{border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fcfdfe}
+  .stat .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+  .stat .v{font-size:19px;font-weight:700;margin-top:3px;font-family:ui-monospace,Menlo,monospace;
+      letter-spacing:-.4px}
+  .stat .u{font-size:11.5px;color:var(--muted);margin-top:2px}
+  .stat.hero{background:linear-gradient(180deg,#eef4fb,#fff);border-color:#bcd4ec}
+  .stat.hero .v{color:var(--brand-dk);font-size:22px}
+  .flag{border-radius:9px;padding:11px 13px;font-size:13.5px;margin-top:10px;border:1px solid}
+  .flag.ok{background:var(--ok-bg);border-color:#bfe0d0;color:#14513a}
+  .flag.warn{background:var(--warn-bg);border-color:#eccfb8;color:#6b3510}
+  .flag.bad{background:var(--bad-bg);border-color:#f2c9c6;color:#7a1a15}
+  .flag b{font-weight:700}
+  .flag ul{margin:6px 0 0;padding-left:19px}
+  .flag li{margin:3px 0}
+  .lbl{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);margin:4px 14px 4px 0}
+  .chartbox{width:100%;overflow-x:auto}
+  svg{display:block;max-width:100%;height:auto}
+  .cap{font-size:12px;color:var(--muted);margin-top:8px}
+  .hidden{display:none}
+  @media print{body{background:#fff}.card{box-shadow:none;break-inside:avoid}
+    .btns,.noprint{display:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Measuring Planck&rsquo;s Constant from LED Threshold Voltages</h1>
+  <div class="sub">Enter each LED&rsquo;s peak wavelength &lambda; and its measured threshold
+    (turn-on) voltage V&#8320;. The tool fits 1/&lambda; against V&#8320;, extracts
+    h = e/(m&nbsp;c), propagates the uncertainty, and flags the systematic problems
+    that matter more than the answer.</div>
+
+  <div class="card">
+    <h2>1 &middot; Theory</h2>
+    <div class="eq">eV&#8320; = h&nu; = hc/&lambda; &nbsp;&rarr;&nbsp; 1/&lambda; = (e / hc) &middot; V&#8320;</div>
+    <div class="eq">slope m = e/(hc) &nbsp;&rarr;&nbsp; h = e / (m &middot; c)</div>
+    <div style="font-size:13.5px;color:var(--muted)">
+      The constant term is <b>not</b> forced to zero. A real diode&rsquo;s first-glow threshold
+      sits below E<sub>g</sub>/e, so the correct model is
+      <span style="font-family:ui-monospace,Menlo,monospace">1/&lambda; = m&middot;V&#8320; + b</span>.
+      Any <i>constant</i> offset is absorbed by <i>b</i> and does not bias the gradient &mdash;
+      which is exactly why the gradient, never the individual points, must be used.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>2 &middot; Data</h2>
+    <div class="scroll">
+      <table id="tbl">
+        <thead><tr>
+          <th title="Include in fit">Use</th><th>LED</th><th>&lambda; (nm)</th><th>V&#8320; (V)</th>
+          <th>1/&lambda; (10&#8310; m&#8315;&#185;)</th><th>E<sub>g</sub> = hc/&lambda; (eV)</th>
+          <th>V&#8320;/E<sub>g</sub></th>
+          <th>h from point</th><th>resid.</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="btns noprint">
+      <button id="add">+ Add LED</button>
+      <button id="reset">Reset to example data</button>
+      <button id="clear">Clear all</button>
+      <button id="csv">Download CSV</button>
+      <button id="copy">Copy summary</button>
+      <button class="primary" onclick="window.print()">Print / PDF</button>
+    </div>
+    <div class="cap" id="datacap"></div>
+  </div>
+
+  <div class="card">
+    <h2>3 &middot; Result</h2>
+    <div class="grid" id="stats"></div>
+    <div id="flags"></div>
+  </div>
+
+  <div class="card">
+    <h2>4 &middot; Graph</h2>
+    <div class="lbl noprint"><input type="checkbox" id="zeroAxis"><label for="zeroAxis">Extend axis to V&#8320; = 0 (reveals the intercept)</label></div>
+    <div class="lbl noprint"><input type="checkbox" id="forceOrigin"><label for="forceOrigin">Also draw the line forced through the origin</label></div>
+    <div class="chartbox"><div id="chart"></div></div>
+    <div class="cap">Fitted line: 1/&lambda; = m&middot;V&#8320; + b with m and b from an unweighted
+      least-squares fit. Grey points are excluded.</div>
+  </div>
+
+  <div class="card">
+    <h2>5 &middot; Constants &amp; method notes</h2>
+    <div style="font-size:13.5px;color:var(--muted)">
+      e = 1.602176634&times;10&#8315;&#185;&#8313; C &nbsp;&middot;&nbsp; c = 2.99792458&times;10&#8312; m&nbsp;s&#8315;&#185;
+      &nbsp;&middot;&nbsp; h<sub>CODATA</sub> = 6.62607015&times;10&#8315;&sup3;&#8308; J&nbsp;s
+      <ul style="margin:9px 0 0;padding-left:19px">
+        <li>Uncertainty on h comes from the standard error of the <b>slope</b>:
+          &sigma;<sub>h</sub> = h &middot; (&sigma;<sub>m</sub>/m). This is the honest precision of the experiment.</li>
+        <li>&lambda; should be the <b>measured peak</b> wavelength (spectrometer), not the datasheet nominal colour.</li>
+        <li>Use the voltage <b>across the LED</b>, not across the LED + series resistor.</li>
+        <li>Thresholds below ~750&nbsp;nm cannot be found by eye &mdash; a photodiode or camera is required.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+/* ---------- constants (SI, CODATA 2018) ---------- */
+const E_CHG = 1.602176634e-19;     // C
+const C_LIGHT = 2.99792458e8;      // m/s
+const H_TRUE = 6.62607015e-34;     // J s
+
+const EXAMPLE = [
+  {name:"1", lam:943.5, v:0.852, on:true},
+  {name:"2", lam:878.7, v:0.949, on:true},
+  {name:"3", lam:647.8, v:1.421, on:true},
+  {name:"4", lam:591.7, v:1.531, on:true},
+  {name:"5", lam:568.0, v:1.682, on:true},
+  {name:"6", lam:502.6, v:2.071, on:true},
+  {name:"7", lam:465.4, v:2.210, on:true},
+];
+let rows = EXAMPLE.map(r => ({...r}));
+let uid = rows.length;
+
+/* ---------- maths ---------- */
+function active(){
+  return rows.filter(r => r.on && isFinite(r.lam) && isFinite(r.v) && r.lam > 0);
+}
+function fit(){
+  const d = active(), n = d.length;
+  if (n < 2) return null;
+  const x = d.map(r => r.v);
+  const y = d.map(r => 1 / (r.lam * 1e-9));
+  const xb = x.reduce((a,b)=>a+b,0)/n;
+  const yb = y.reduce((a,b)=>a+b,0)/n;
+  const Sxx = x.reduce((a,xi)=>a+(xi-xb)*(xi-xb),0);
+  const Sxy = x.reduce((a,xi,i)=>a+(xi-xb)*(y[i]-yb),0);
+  if (Sxx === 0) return null;
+  const m = Sxy/Sxx, b = yb - m*xb;
+  const res = y.map((yi,i)=> yi - (m*x[i]+b));
+  const ssr = res.reduce((a,r)=>a+r*r,0);
+  const sst = y.reduce((a,yi)=>a+(yi-yb)*(yi-yb),0);
+  const r2 = sst > 0 ? 1 - ssr/sst : NaN;
+  const dof = n - 2;
+  const s2 = dof > 0 ? ssr/dof : 0;
+  const sem = Math.sqrt(s2/Sxx);
+  const seb = Math.sqrt(s2*(1/n + xb*xb/Sxx));
+  const h = E_CHG/(m*C_LIGHT);
+  const sh = h*sem/m;
+  // forced through origin (physically wrong here, shown for contrast)
+  const Sxxo = x.reduce((a,xi)=>a+xi*xi,0);
+  const Sxyo = x.reduce((a,xi,i)=>a+xi*y[i],0);
+  const m0 = Sxyo/Sxxo, h0 = E_CHG/(m0*C_LIGHT);
+  const ymin = Math.min(...y), ymax = Math.max(...y);
+  return {d,n,x,y,m,b,sem,seb,r2,res,ssr,sst,h,sh,m0,h0,yb,Sxx,ymin,ymax};
+}
+
+/* ---------- formatting ---------- */
+const f = (v,d=2) => (isFinite(v) ? v.toFixed(d) : "\u2014");
+const e34 = v => (isFinite(v) ? (v*1e34).toFixed(3) : "\u2014");
+function sci(v,d=1){
+  if(!isFinite(v)||v===0) return "\u2014";
+  const s = v.toExponential(d).split("e");
+  return s[0] + "\u00d710" + sup(parseInt(s[1],10));
+}
+const SUP = {"-":"\u207b","0":"\u2070","1":"\u00b9","2":"\u00b2","3":"\u00b3","4":"\u2074",
+             "5":"\u2075","6":"\u2076","7":"\u2077","8":"\u2078","9":"\u2079"};
+const sup = n => String(n).split("").map(c=>SUP[c]||c).join("");
+
+/* ---------- render: data table ----------
+   Rows are built ONCE (structure + the two inputs). Everything recomputed goes
+   into separate cells, so re-rendering never touches a focused input. */
+let rowEls = [];
+function buildTable(){
+  const tb = document.getElementById("tbody");
+  tb.innerHTML = "";
+  rowEls = rows.map((r, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td><input type="checkbox"></td>` +
+      `<td class="c-name" style="color:var(--muted);font-size:12px"></td>` +
+      `<td><input type="number" step="0.1"></td>` +
+      `<td><input type="number" step="0.001"></td>` +
+      `<td class="c-y">\u2014</td><td class="c-eg">\u2014</td><td class="c-ratio">\u2014</td>` +
+      `<td class="c-hp">\u2014</td><td class="c-res">\u2014</td>`;
+    const nums = tr.querySelectorAll("input[type=number]");
+    const o = {
+      tr,
+      cb: tr.querySelector("input[type=checkbox]"),
+      lam: nums[0], v: nums[1],
+      name: tr.querySelector(".c-name"), cy: tr.querySelector(".c-y"),
+      ceg: tr.querySelector(".c-eg"), cratio: tr.querySelector(".c-ratio"),
+      chp: tr.querySelector(".c-hp"), cres: tr.querySelector(".c-res"),
+    };
+    o.cb.dataset.i = i;  o.cb.dataset.k = "on";
+    o.lam.dataset.i = i; o.lam.dataset.k = "lam";
+    o.v.dataset.i = i;   o.v.dataset.k = "v";
+    o.cb.checked = !!r.on;
+    o.lam.value = isFinite(r.lam) && r.lam > 0 ? r.lam : "";
+    o.v.value   = isFinite(r.v) ? r.v : "";
+    o.name.textContent = r.name;
+    tb.appendChild(tr);
+    return o;
+  });
+}
+function refreshTable(F){
+  rows.forEach((r, i) => {
+    const o = rowEls[i];
+    if (!o) return;
+    const lamOk = isFinite(r.lam) && r.lam > 0;
+    const vOk   = isFinite(r.v);
+    const y   = lamOk ? 1/(r.lam*1e-9) : NaN;
+    const Eg  = lamOk ? H_TRUE*C_LIGHT/(r.lam*1e-9)/E_CHG : NaN;   // eV
+    const rt  = (lamOk && vOk) ? r.v/Eg : NaN;
+    const hp  = (lamOk && vOk) ? E_CHG*r.v*(r.lam*1e-9)/C_LIGHT : NaN;
+    const res = (F && r.on && lamOk && vOk && F.d.indexOf(r) >= 0) ? F.res[F.d.indexOf(r)] : NaN;
+
+    o.cb.checked = !!r.on;                                  // keep DOM in sync on reset
+    o.cy.textContent    = isFinite(y)  ? (y/1e6).toFixed(4) : "\u2014";
+    o.ceg.textContent   = f(Eg,3);
+    o.cratio.textContent = f(rt,3);
+    o.cratio.style.color = (!isFinite(rt) || rt > 0.92) ? "var(--bad)" : "";
+    o.cratio.style.fontWeight = (!isFinite(rt) || rt > 0.92) ? "700" : "";
+    o.chp.textContent   = isFinite(hp)  ? e34(hp) : "\u2014";
+    o.cres.textContent  = isFinite(res) ? (res/1e6).toFixed(4) : "\u2014";
+    o.tr.className = (F && r.on && isFinite(res) && Math.abs(res)/F.yb > 0.03) ? "row-missed" : "";
+  });
+  document.getElementById("datacap").textContent =
+    `${active().length} of ${rows.length} LEDs included in the fit. ` +
+    `h-from-point and residual columns are in units of 10\u207b\u00b3\u2074 J\u00b7s and 10\u2076 m\u207b\u00b9 respectively.`;
+}
+
+/* ---------- render: stats ---------- */
+function renderStats(F){
+  const box = document.getElementById("stats");
+  if (!F){
+    box.innerHTML = `<div class="stat hero"><div class="k">Result</div>
+      <div class="v">need 2+ LEDs</div>
+      <div class="u">Enter at least two \u03bb / V\u2080 pairs with different V\u2080.</div></div>`;
+    document.getElementById("flags").innerHTML = "";
+    return;
+  }
+  const pctErr   = Math.abs(F.h - H_TRUE)/H_TRUE*100;
+  const sigmaDev = F.sh > 0 ? Math.abs(F.h - H_TRUE)/F.sh : Infinity;
+  const relSem   = F.sem/F.m*100;
+  const bFrac    = F.b/(F.ymax - F.ymin)*100;
+
+  box.innerHTML = `
+    <div class="stat hero">
+      <div class="k">Measured h</div>
+      <div class="v">(${e34(F.h)} &plusmn; ${e34(F.sh)})</div>
+      <div class="u">&times;10\u207b\u00b3\u2074 J\u00b7s</div></div>
+    <div class="stat"><div class="k">Slope m = e/hc</div>
+      <div class="v">${F.m.toFixed(0)}</div>
+      <div class="u">&plusmn; ${F.sem.toFixed(0)} &nbsp;(${relSem.toFixed(1)}% rel.)</div></div>
+    <div class="stat"><div class="k">\u03c7\u00b2 / R\u00b2</div>
+      <div class="v">${f(F.r2,4)}</div>
+      <div class="u">${F.n} points, ${F.n-2} d.o.f.</div></div>
+    <div class="stat"><div class="k">Deviation from CODATA</div>
+      <div class="v" style="color:${sigmaDev<2?'var(--ok)':'var(--bad)'}">${isFinite(sigmaDev)?sigmaDev.toFixed(2):"\u2014"} \u03c3</div>
+      <div class="u">central value is ${pctErr.toFixed(2)}% high</div></div>
+    <div class="stat"><div class="k">Intercept b</div>
+      <div class="v">${(F.b/1e6).toFixed(3)}</div>
+      <div class="u">&plusmn; ${(F.seb/1e6).toFixed(3)} &nbsp;(${bFrac.toFixed(0)}% of range)</div></div>
+    <div class="stat"><div class="k">Accepted h</div>
+      <div class="v">6.626070</div>
+      <div class="u">&times;10\u207b\u00b3\u2074 J\u00b7s (CODATA 2018)</div></div>`;
+
+  /* ---- diagnostic flags ---- */
+  const fl = [];
+  if (sigmaDev < 2){
+    fl.push(["ok", `<b>Consistent with the accepted value.</b> The fitted h sits
+      ${sigmaDev.toFixed(2)}\u03c3 from CODATA. Report it as
+      h = (${e34(F.h)} &plusmn; ${e34(F.sh)})\u00d710\u207b\u00b3\u2074 J\u00b7s &mdash; the
+      \u00b1${relSem.toFixed(1)}% slope uncertainty is the real precision, not the
+      ${pctErr.toFixed(2)}% central-value gap.`]);
+  } else {
+    fl.push(["bad", `<b>Inconsistent with the accepted value.</b> h is ${sigmaDev.toFixed(1)}\u03c3
+      from CODATA. That is likely a systematic, not scatter: check \u03bb provenance, whether the
+      voltage was measured across the LED alone, and whether any threshold was judged by eye.`]);
+  }
+
+  if (Math.abs(bFrac) > 10){
+    fl.push(["warn", `<b>The line does not pass through the origin.</b> The fitted intercept is
+      ${(F.b/1e6).toFixed(2)}\u00d710\u2076 m\u207b\u00b9, i.e. ${bFrac.toFixed(0)}% of the
+      data range. Theory demands b = 0, so this is a genuine systematic: a real LED's first-glow
+      threshold sits <i>below</i> E<sub>g</sub>/e, and the shortfall shrinks as \u03bb gets shorter.
+      <ul>
+        <li><b>Do not force the fit through the origin</b> &mdash; that would give
+          h = ${e34(F.h0)}\u00d710\u207b\u00b3\u2074 J\u00b7s
+          (${(Math.abs(F.h0-H_TRUE)/H_TRUE*100).toFixed(1)}% error) instead of
+          ${e34(F.h)}. Report and discuss the intercept instead; it is the interesting physics.</li>
+        <li>Quote b and \u03c3<sub>b</sub> alongside m. A large, well-determined intercept is a
+          finding, not a failure.</li>
+      </ul>`]);
+  }
+
+  const ratios = F.d.map(r => r.v/(H_TRUE*C_LIGHT/(r.lam*1e-9)/E_CHG));
+  const rmin = Math.min(...ratios), rmax = Math.max(...ratios);
+  if (rmax - rmin > 0.08){
+    fl.push(["warn", `<b>V&#8320;/E<sub>g</sub> is not constant</b> (spreads ${rmin.toFixed(2)}
+      \u2192 ${rmax.toFixed(2)} across the set). If the threshold-voltage bias were the same for
+      every LED the fit would still be a straight line and only b would move; because the bias
+      <i>drifts</i> with wavelength, it tilts the gradient and biases h. This is the dominant
+      systematic here and belongs in your error discussion.`]);
+  }
+
+  const ir = F.d.filter(r => r.lam > 750);
+  if (ir.length){
+    fl.push(["bad", `<b>${ir.length} point${ir.length>1?"s":""} above 750&nbsp;nm
+      (${ir.map(r=>r.lam.toFixed(0)+" nm").join(", ")}) \u2014 near-infrared.</b>
+      The dark-adapted eye cuts off near 700\u2013750&nbsp;nm, so a "first visible glow" threshold
+      cannot be found by eye at those wavelengths. State the detection method (photodiode,
+      phototransistor or camera); if it was visual, exclude them.`]);
+  }
+
+  const perH = F.d.map(r => E_CHG*r.v*(r.lam*1e-9)/C_LIGHT);
+  const hmin = Math.min(...perH), hmax = Math.max(...perH);
+  if (hmax/hmin > 1.15){
+    fl.push(["warn", `<b>Do not quote a per-LED h.</b> Single-point values
+      e&middot;V&#8320;&middot;\u03bb/c span ${e34(hmin)} \u2192 ${e34(hmax)} (a factor
+      ${(hmax/hmin).toFixed(2)}), because each one inherits the whole threshold-voltage bias.
+      Only the gradient is defensible.`]);
+  }
+
+  const worst = F.res.map((r,i)=>({i, z: Math.abs(r)/(F.sem*Math.sqrt(F.Sxx/F.n))}))
+                      .sort((a,b)=>b.z-a.z)[0];
+  if (worst && isFinite(worst.z) && worst.z > 1.8){
+    const r0 = F.d[worst.i];
+    fl.push(["warn", `<b>One point stands out.</b> The ${r0.lam.toFixed(0)}&nbsp;nm LED
+      (V&#8320; = ${r0.v} V) misses the fitted line by
+      ${(F.res[worst.i]/1e6).toFixed(3)}\u00d710\u2076 m\u207b\u00b9 \u2014 about
+      ${worst.z.toFixed(1)}\u00d7 its expected residual. Re-check that LED's peak wavelength
+      with a spectrometer; a mislabelled nominal colour moves h directly.`]);
+  }
+
+  document.getElementById("flags").innerHTML =
+    fl.map(([cls,html]) => `<div class="flag ${cls}">${html}</div>`).join("");
+}
+
+/* ---------- render: chart ---------- */
+function niceTicks(lo, hi, count){
+  const span = hi - lo;
+  if (!(span > 0)) return [lo];
+  const raw = span/count;
+  const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const norm = raw/mag;
+  const step = (norm<=1?1:norm<=2?2:norm<=2.5?2.5:norm<=5?5:10)*mag;
+  const out = [];
+  for (let t = Math.ceil(lo/step)*step; t <= hi + step*1e-9; t += step)
+    out.push(Math.abs(t) < step*1e-9 ? 0 : t);
+  return out;
+}
+function renderChart(F){
+  const host = document.getElementById("chart");
+  const W = 660, H = 400, L = 84, R = 22, T = 22, B = 56;
+  if (!F){ host.innerHTML = `<div style="padding:34px;text-align:center;color:var(--muted)">
+    Add at least two LEDs to see the graph.</div>`; return; }
+
+  const zero = document.getElementById("zeroAxis").checked;
+  const force = document.getElementById("forceOrigin").checked;
+
+  let xlo = Math.min(...F.x), xhi = Math.max(...F.x);
+  const padx = Math.max((xhi-xlo)*0.08, 0.05);
+  xlo -= padx; xhi += padx;
+  if (zero) xlo = 0;
+  let ylo = Math.min(...F.y), yhi = Math.max(...F.y);
+  const pady = Math.max((yhi-ylo)*0.10, 1e5);
+  ylo -= pady; yhi += pady;
+  if (zero){ ylo = Math.min(ylo, F.b - pady*0.5); }
+
+  const sx = v => L + (v - xlo)/(xhi - xlo)*(W - L - R);
+  const sy = v => H - B - (v - ylo)/(yhi - ylo)*(H - T - B);
+
+  const xt = niceTicks(xlo, xhi, zero?8:7);
+  const yt = niceTicks(ylo, yhi, zero ? 9 : 7);
+
+  let g = "";
+  // grid + y labels
+  yt.forEach(t => {
+    const yy = sy(t);
+    g += `<line x1="${L}" y1="${yy.toFixed(1)}" x2="${W-R}" y2="${yy.toFixed(1)}" stroke="#e6ebf1"/>`;
+    g += `<text x="${L-9}" y="${(yy+4).toFixed(1)}" text-anchor="end" font-size="11.5"
+            fill="#5b6b7c">${(t/1e6).toFixed(2)}</text>`;
+  });
+  xt.forEach(t => {
+    const xx = sx(t);
+    g += `<line x1="${xx.toFixed(1)}" y1="${T}" x2="${xx.toFixed(1)}" y2="${H-B}" stroke="#e6ebf1"/>`;
+    g += `<text x="${xx.toFixed(1)}" y="${H-B+19}" text-anchor="middle" font-size="11.5"
+            fill="#5b6b7c">${t.toFixed(t<10?2:1)}</text>`;
+  });
+  // axes
+  g += `<line x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}" stroke="#1b2430"/>`;
+  g += `<line x1="${L}" y1="${T}" x2="${L}" y2="${H-B}" stroke="#1b2430"/>`;
+  g += `<text x="${(L+W-R)/2}" y="${H-11}" text-anchor="middle" font-size="13" fill="#1b2430">
+          Threshold voltage V&#8320; (V)</text>`;
+  g += `<text transform="translate(20,${(T+H-B)/2}) rotate(-90)" text-anchor="middle" font-size="13"
+          fill="#1b2430">1/&lambda; (10&#8310; m&#8315;&#185;)</text>`;
+
+  // origin marker when the axis is extended to zero
+  if (zero){
+    g += `<line x1="${sx(0).toFixed(1)}" y1="${T}" x2="${sx(0).toFixed(1)}" y2="${H-B}"
+            stroke="#b4531a" stroke-dasharray="3 3" opacity=".65"/>`;
+    g += `<circle cx="${sx(0).toFixed(1)}" cy="${sy(F.b).toFixed(1)}" r="4.5" fill="#b4531a"/>`;
+    g += `<text x="${(sx(0)+7).toFixed(1)}" y="${(sy(F.b)-9).toFixed(1)}" font-size="11.5"
+            fill="#b4531a">intercept b = ${(F.b/1e6).toFixed(2)}</text>`;
+  }
+  if (force){
+    g += `<line x1="${sx(xlo).toFixed(1)}" y1="${sy(F.m0*xlo).toFixed(1)}"
+            x2="${sx(xhi).toFixed(1)}" y2="${sy(F.m0*xhi).toFixed(1)}"
+            stroke="#9aa7b4" stroke-width="1.6" stroke-dasharray="7 4"/>`;
+  }
+  // fitted line
+  g += `<line x1="${sx(xlo).toFixed(1)}" y1="${sy(F.m*xlo+F.b).toFixed(1)}"
+          x2="${sx(xhi).toFixed(1)}" y2="${sy(F.m*xhi+F.b).toFixed(1)}"
+          stroke="#2f6fb5" stroke-width="2" stroke-dasharray="6 4"/>`;
+  // points
+  F.d.forEach((r, i) => {
+    g += `<circle cx="${sx(r.v).toFixed(1)}" cy="${sy(F.y[i]).toFixed(1)}" r="5.5"
+            fill="#2f6fb5" stroke="#fff" stroke-width="1.5"/>`;
+  });
+  rows.filter(r => !r.on).forEach(r => {
+    if (!(isFinite(r.lam) && isFinite(r.v) && r.lam > 0)) return;
+    g += `<circle cx="${sx(r.v).toFixed(1)}" cy="${sy(1/(r.lam*1e-9)).toFixed(1)}" r="4.5"
+            fill="#fff" stroke="#9aa7b4" stroke-width="1.5"/>`;
+  });
+
+  const legend =
+    `<g font-size="11.5" fill="#5b6b7c">
+      <line x1="${L+12}" y1="${T+13}" x2="${L+42}" y2="${T+13}" stroke="#2f6fb5"
+        stroke-width="2" stroke-dasharray="6 4"/>
+      <text x="${L+48}" y="${T+17}">fit: m = ${F.m.toFixed(0)} \u00b1 ${F.sem.toFixed(0)} m\u207b\u00b9V\u207b\u00b9</text>
+      ${force ? `<line x1="${L+12}" y1="${T+32}" x2="${L+42}" y2="${T+32}" stroke="#9aa7b4"
+        stroke-width="1.6" stroke-dasharray="7 4"/>
+        <text x="${L+48}" y="${T+36}">forced through origin \u2192 h = ${e34(F.h0)}\u00d710\u207b\u00b3\u2074</text>` : ""}
+    </g>`;
+
+  host.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img"
+      aria-label="Scatter plot of reciprocal wavelength against threshold voltage">
+      <rect width="${W}" height="${H}" fill="#fff"/>${g}${legend}</svg>`;
+}
+
+/* ---------- full re-render ---------- */
+function update(){
+  const F = fit();
+  refreshTable(F);
+  renderStats(F);
+  renderChart(F);
+}
+
+/* ---------- events ---------- */
+document.getElementById("tbody").addEventListener("input", ev => {
+  const t = ev.target, k = t.dataset.k;
+  if (k !== "lam" && k !== "v") return;
+  rows[+t.dataset.i][k] = t.value === "" ? NaN : parseFloat(t.value);
+  update();
+});
+document.getElementById("tbody").addEventListener("change", ev => {
+  const t = ev.target;
+  if (t.dataset.k !== "on") return;
+  rows[+t.dataset.i].on = t.checked;
+  update();
+});
+document.getElementById("add").onclick = () => {
+  uid++;
+  rows.push({name:String(uid), lam:NaN, v:NaN, on:true});
+  buildTable();
+  update();
+  const last = rowEls[rowEls.length-1];
+  if (last) last.lam.focus();
+};
+document.getElementById("reset").onclick = () => {
+  rows = EXAMPLE.map(r => ({...r})); uid = rows.length;
+  buildTable(); update();
+};
+document.getElementById("clear").onclick = () => {
+  rows = []; uid = 0;
+  buildTable(); update();
+};
+["zeroAxis","forceOrigin"].forEach(id =>
+  document.getElementById(id).addEventListener("change", update));
+
+document.getElementById("csv").onclick = () => {
+  const F = fit();
+  const head = "LED,lambda_nm,V0_V,inv_lambda_per_m,Eg_eV,V0_over_Eg,h_from_point_Js,included";
+  const lines = rows.map((r,i) => {
+    const ok = isFinite(r.lam) && r.lam > 0 && isFinite(r.v) && r.v !== 0;
+    const y  = ok ? 1/(r.lam*1e-9) : "";
+    const Eg = ok ? H_TRUE*C_LIGHT/(r.lam*1e-9)/E_CHG : "";
+    const rt = ok ? r.v/Eg : "";
+    const hp = ok ? E_CHG*r.v*(r.lam*1e-9)/C_LIGHT : "";
+    return [r.name, r.lam, r.v, y, Eg, rt, hp, r.on ? 1 : 0].join(",");
+  });
+  const tail = F ? `\n# fit: m=${F.m.toFixed(1)}, sigma_m=${F.sem.toFixed(1)}, b=${F.b.toFixed(1)}, ` +
+      `sigma_b=${F.seb.toFixed(1)}, R2=${F.r2.toFixed(6)}, ` +
+      `h=${F.h.toExponential(6)}, sigma_h=${F.sh.toExponential(3)}, n=${F.n}` : "";
+  const blob = new Blob([head + "\n" + lines.join("\n") + tail + "\n"], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "planck-led-data.csv";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+document.getElementById("copy").onclick = async () => {
+  const F = fit();
+  if (!F) return;
+  const pct = Math.abs(F.h-H_TRUE)/H_TRUE*100;
+  const dev = F.sh > 0 ? Math.abs(F.h-H_TRUE)/F.sh : NaN;
+  const txt =
+`Planck's constant from LED threshold voltages
+n = ${F.n} LEDs
+fit:  1/lambda = (${F.m.toFixed(0)} +/- ${F.sem.toFixed(0)}) * V0 + (${F.b.toFixed(0)} +/- ${F.seb.toFixed(0)})   [m^-1]
+R^2 = ${F.r2.toFixed(4)}
+b as fraction of data range: ${(F.b/(F.ymax-F.ymin)*100).toFixed(0)}%
+h = e/(m c) = (${e34(F.h)} +/- ${e34(F.sh)})e-34 J s
+accepted h  = 6.62607015e-34 J s   (CODATA 2018)
+central value is ${pct.toFixed(2)}% high = ${isFinite(dev)?dev.toFixed(2):"?"} sigma
+forced-through-origin (NOT valid): h = ${e34(F.h0)}e-34 J s`;
+  try { await navigator.clipboard.writeText(txt); 
+        document.getElementById("copy").textContent = "Copied \u2713";
+        setTimeout(()=>document.getElementById("copy").textContent = "Copy summary", 1600);
+  } catch(e){ window.prompt("Copy the summary:", txt); }
+};
+
+buildTable();
+update();
+</script>
+</body>
+</html>
