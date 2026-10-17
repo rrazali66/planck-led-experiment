@@ -1,7 +1,13 @@
 # Measuring Planck's Constant from LED Threshold Voltages
 
-An interactive, dependency-free web tool for the classic LED determination of Planck's constant.
-Single `index.html` — no build step, no CDN, works offline.
+Two self-contained, dependency-free pages for the classic LED determination of Planck's constant:
+
+| File | What it is |
+|---|---|
+| `index.html` | Interactive analysis tool — editable data, live fit, diagnostics, CSV export |
+| `report.html` | Full lab report — theory, method, uncertainty budget, figures, references |
+
+No build step, no CDN, works offline.
 
 ## Physics
 
